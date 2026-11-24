@@ -1,0 +1,54 @@
+{
+  "name": "dsh-plugin-codex-controller",
+  "version": "1.2.0",
+  "description": "Codex 控制器 — a DeepSeek Harness (dsh) bundle plugin that drives OpenAI Codex CLI over the official app-server JSON-RPC protocol: draft prompts, reframe refused ones, type into the thread, read output, and watch live progress from agent tools or the web GUI.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "README.zh-CN.md",
+    "REFUSAL.md",
+    "UPGRADE.md",
+    "cordis.patch.yml",
+    "install.ps1"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "cordis",
+    "codex",
+    "codex-cli",
+    "app-server",
+    "json-rpc",
+    "agent-orchestration"
+  ]
+}

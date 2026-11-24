@@ -1,0 +1,22 @@
+# runtime / local-only
+node_modules/
+scratch/
+
+# generated protocol dump (regenerate: codex app-server generate-json-schema --out schema)
+schema/
+
+# logs
+*.log
+dev/*.log
+
+# editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# one-off schema scraping helpers (local only)
+extract.js
+extract2.js
+summarize.js
+
