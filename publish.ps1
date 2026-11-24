@@ -50,8 +50,29 @@ function Api([string]$Method, [string]$Path, $Body) {
 }
 
 function RunGit([string[]]$GitArgs) {
-  $out = & git @GitArgs 2>&1 | Out-String
-  return @{ code = $LASTEXITCODE; out = $out.Trim() }
+  # git writes progress/warnings to stderr; under $ErrorActionPreference='Stop'
+  # those lines become terminating errors, so scope the preference down here and
+  # trust only the exit code.
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $out = & git @GitArgs 2>&1 | Out-String
+    return @{ code = $LASTEXITCODE; out = $out.Trim() }
+  } finally {
+    $ErrorActionPreference = $prev
+  }
+}
+
+# git does not read the Windows/WinINET proxy. Detect the usual local client
+# (Clash on 7890, V2Ray on 10809, plain 8080) or take HTTPS_PROXY from the env.
+function Resolve-GitProxy {
+  if ($env:HTTPS_PROXY) { return $env:HTTPS_PROXY }
+  if ($env:https_proxy) { return $env:https_proxy }
+  foreach ($port in 7890, 7897, 10809, 8080) {
+    $listen = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+    if ($listen) { return "http://127.0.0.1:$port" }
+  }
+  return $null
 }
 
 $me = Api GET '/user' $null
@@ -110,11 +131,19 @@ try {
   $branch = (& git symbolic-ref --short HEAD).Trim()
   if (-not $branch) { throw 'no current branch' }
 
+  $gitProxy = Resolve-GitProxy
+  $proxyArgs = @()
+  if ($gitProxy) {
+    $proxyArgs = @('-c', "http.proxy=$gitProxy", '-c', "https.proxy=$gitProxy")
+    Write-Host "using proxy $gitProxy (git ignores the system proxy)" -ForegroundColor DarkGray
+  }
+  $pushUrl = "https://x-access-token:$Token@github.com/$Owner/$Repo.git"
+
   Write-Host "pushing $branch ..." -ForegroundColor DarkGray
-  $push = RunGit @('push', "https://x-access-token:$Token@github.com/$Owner/$Repo.git", $branch, '--force-with-lease')
+  $push = RunGit (@('push', $pushUrl, $branch) + $proxyArgs)
   if ($push.code -ne 0) {
-    # empty remote repo: first push needs an explicit refspec
-    $push = RunGit @('push', "https://x-access-token:$Token@github.com/$Owner/$Repo.git", "${branch}:${branch}")
+    # first push to an empty remote may need an explicit refspec
+    $push = RunGit (@('push', $pushUrl, "${branch}:${branch}") + $proxyArgs)
   }
   if ($push.out) { Write-Host $push.out -ForegroundColor DarkGray }
   if ($push.code -ne 0) { throw "git push failed (exit $($push.code))" }
